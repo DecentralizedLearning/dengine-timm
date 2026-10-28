@@ -2,8 +2,8 @@
   {
     "EXPERIMENT_VERSION": "1",
     "target": null,
-    "experiments_directory_root": "/home/samuele.sabella/Desktop/DecentralizedLearning/dEngine.timm/logs/debug",
-    "name": "cifar10,Centralized",
+    "experiments_directory_root": "/home/samuele/DecentralizedLearning/dengine-timm/logs",
+    "name": "mnist,Centralized",
     "seed": 123,
     "dataset": {
       "train": {
@@ -39,10 +39,7 @@
     },
     "client": {
       "target": "CentralizedClient",
-      "arguments": {
-        "debug_skip_training": true,
-        "debug_skip_test": true
-      },
+      "arguments": null,
       "training_engine": {
         "target": "TrainingEngine",
         "arguments": {
@@ -55,17 +52,26 @@
         }
       },
       "local_model": {
-        "target": "CNNMnist",
-        "arguments": null
+        "target": "TimmModelBase",
+        "arguments": {
+          "model_name": "mnasnet_050",
+          "__timm__pretrained": false,
+          "__timm__norm_layer": "GroupNorm1"
+        }
       }
     },
-    "callbacks": []
+    "callbacks": [
+      {
+        "target": "ConfusionMatrixDumpOnTestInferenceEnd",
+        "arguments": null
+      }
+    ]
   },
   {
     "EXPERIMENT_VERSION": "1",
     "target": null,
-    "experiments_directory_root": "/home/samuele.sabella/Desktop/DecentralizedLearning/dEngine.timm/logs/debug",
-    "name": "cifar10,BA,DecAvg",
+    "experiments_directory_root": "/home/samuele/DecentralizedLearning/dengine-timm/logs",
+    "name": "mnist,BA,DecAvg",
     "seed": 123,
     "dataset": {
       "train": {
@@ -103,16 +109,15 @@
       "target": "VanillaDecentralizedSynch",
       "arguments": {
         "common_init": true,
-        "max_communication_rounds": 200
+        "max_communication_rounds": 20,
+        "num_parallel_clients": 50
       }
     },
     "client": {
       "target": "DecAvgClient",
       "arguments": {
         "include_myself": true,
-        "use_weighted_avg": true,
-        "debug_skip_training": true,
-        "debug_skip_test": true
+        "use_weighted_avg": true
       },
       "training_engine": {
         "target": "TrainingEngine",
@@ -129,17 +134,26 @@
         }
       },
       "local_model": {
-        "target": "CNNMnist",
-        "arguments": null
+        "target": "TimmModelBase",
+        "arguments": {
+          "model_name": "mnasnet_050",
+          "__timm__pretrained": false,
+          "__timm__norm_layer": "GroupNorm1"
+        }
       }
     },
-    "callbacks": []
+    "callbacks": [
+      {
+        "target": "ConfusionMatrixDumpOnCommRoundEndCallback",
+        "arguments": null
+      }
+    ]
   },
   {
     "EXPERIMENT_VERSION": "1",
     "target": null,
-    "experiments_directory_root": "/home/samuele.sabella/Desktop/DecentralizedLearning/dEngine.timm/logs/debug",
-    "name": "cifar10,ER,DecAvg",
+    "experiments_directory_root": "/home/samuele/DecentralizedLearning/dengine-timm/logs",
+    "name": "mnist,ER,DecAvg",
     "seed": 123,
     "dataset": {
       "train": {
@@ -177,16 +191,15 @@
       "target": "VanillaDecentralizedSynch",
       "arguments": {
         "common_init": true,
-        "max_communication_rounds": 200
+        "max_communication_rounds": 20,
+        "num_parallel_clients": 50
       }
     },
     "client": {
       "target": "DecAvgClient",
       "arguments": {
         "include_myself": true,
-        "use_weighted_avg": true,
-        "debug_skip_training": true,
-        "debug_skip_test": true
+        "use_weighted_avg": true
       },
       "training_engine": {
         "target": "TrainingEngine",
@@ -203,17 +216,26 @@
         }
       },
       "local_model": {
-        "target": "CNNMnist",
-        "arguments": null
+        "target": "TimmModelBase",
+        "arguments": {
+          "model_name": "mnasnet_050",
+          "__timm__pretrained": false,
+          "__timm__norm_layer": "GroupNorm1"
+        }
       }
     },
-    "callbacks": []
+    "callbacks": [
+      {
+        "target": "ConfusionMatrixDumpOnCommRoundEndCallback",
+        "arguments": null
+      }
+    ]
   },
   {
     "EXPERIMENT_VERSION": "1",
     "target": null,
-    "experiments_directory_root": "/home/samuele.sabella/Desktop/DecentralizedLearning/dEngine.timm/logs/debug",
-    "name": "cifar10,FedAvg",
+    "experiments_directory_root": "/home/samuele/DecentralizedLearning/dengine-timm/logs",
+    "name": "mnist,FedAvg",
     "seed": 123,
     "dataset": {
       "train": {
@@ -249,16 +271,15 @@
       "target": "VanillaDecentralizedSynch",
       "arguments": {
         "common_init": true,
-        "max_communication_rounds": 200
+        "max_communication_rounds": 20,
+        "num_parallel_clients": 50
       }
     },
     "client": {
       "target": "DecAvgClient",
       "arguments": {
         "include_myself": true,
-        "use_weighted_avg": true,
-        "debug_skip_training": true,
-        "debug_skip_test": true
+        "use_weighted_avg": true
       },
       "training_engine": {
         "target": "TrainingEngine",
@@ -275,10 +296,19 @@
         }
       },
       "local_model": {
-        "target": "CNNMnist",
-        "arguments": null
+        "target": "TimmModelBase",
+        "arguments": {
+          "model_name": "mnasnet_050",
+          "__timm__pretrained": false,
+          "__timm__norm_layer": "GroupNorm1"
+        }
       }
     },
-    "callbacks": []
+    "callbacks": [
+      {
+        "target": "ConfusionMatrixDumpOnCommRoundEndCallback",
+        "arguments": null
+      }
+    ]
   }
 ]
