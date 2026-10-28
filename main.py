@@ -16,17 +16,20 @@ from dengine.config.utils import convert_to_nested_dict
 from dengine import load_experiment_from_yamls
 from dengine.bin.simulation import load_engine
 from dengine.scenarios.decentralized import DecAvgClient
+from dengine.scenarios.federated import FederatedClient
 from dengine.scenarios.centralized import CentralizedClient
+from dengine.callbacks.local import ConfusionMatrixDumpOnCommRoundEndCallback, ConfusionMatrixDumpOnTestInferenceEnd
 
 from dengine_timm import create_model
+from timm.layers import GroupNorm1
 
 
 # ..... ..... ..... ..... ..... ..... ..... ..... #
 # SCENARIOS
 # ..... ..... ..... ..... ..... ..... ..... ..... #
 FEDERATED_CONFIGS = [
-    BUILTINS.CORE.SCENARIOS.DECENTRALIZED_HOMOGENOUS,
-    BUILTINS.CORE.GRAPH.STAR_51,
+    BUILTINS.CORE.SCENARIOS.FEDERATED,
+    BUILTINS.CORE.GRAPH.COMPLETE_GRAPH_MEDIUM,
     BUILTINS.CORE.PARTITIONING.NONIID,
     BUILTINS.CORE.DATASETS.MNIST,
 ]
@@ -43,37 +46,38 @@ DECENTRALIZED_ER_CONFIGS = [
     BUILTINS.CORE.DATASETS.MNIST,
 ]
 CENTRALIZED_CONFIGS = [
-    BUILTINS.CORE.GRAPH.CENTRALIZED,
+    BUILTINS.CORE.GRAPH.CENTRALIZED_GRAPH,
     BUILTINS.CORE.SCENARIOS.CENTRALIZED,
     BUILTINS.CORE.PARTITIONING.IID,
     BUILTINS.CORE.DATASETS.MNIST,
 ]
 
-CENTRALIZED_CONFIG_OVERRIDES = {
-    "client.target": CentralizedClient.__name__,
-    "client.training_engine.arguments.epochs": 1500,
-}
-DECENTRALIZED_CONFIG_OVERRIDES = {
-    "client.target": DecAvgClient.__name__,
-    # Aggregation and Scenario
-    "scenario.arguments.common_init": True,
-    "client.arguments.include_myself": True,
-    "client.arguments.use_weighted_avg": True,
-    "scenario.arguments.max_communication_rounds": 200,
-    # Training Engine
-    "client.training_engine.arguments.optimizer": "Adam",
-    "client.training_engine.arguments.lr": 0.0003,
-    "client.training_engine.arguments.adam_weight_decay": 0.001,
-    "client.training_engine.arguments.scheduler": "cosine",
-    "client.training_engine.arguments.patience": 5,
+COMMON_ARGS = {
     "client.training_engine.arguments.epochs": 5,
-    "client.training_engine.arguments.validation_batch_size": 32,
-    "client.training_engine.arguments.training_batch_size": 32,
+    "client.training_engine.arguments.validation_batch_size": 512,
+    "client.training_engine.arguments.training_batch_size": 128,
     "partitioning.arguments.validation_percentage": 0.2,
 }
+CENTRALIZED_CONFIG_OVERRIDES = {
+    "client.target": CentralizedClient,
+    "client.training_engine.arguments.epochs": 1500,
+    **COMMON_ARGS
+}
+DECENTRALIZED_CONFIG_OVERRIDES = {
+    "client.target": DecAvgClient,
+    "scenario.arguments.max_communication_rounds": 200,
+    "client.arguments.use_weighted_avg": True,
+    **COMMON_ARGS
+}
+FEDERATED_CONFIGS_OVERRIDES = {
+    "client.target": FederatedClient,
+    "scenario.arguments.max_communication_rounds": 200,
+    "scenario.arguments.use_weighted_avg": True,
+    **COMMON_ARGS
+}
 
 
-MNASNET_CNN = create_model('mnasnet_050', pretrained=False)
+MNASNET_CNN = create_model('mnasnet_050', pretrained=False, norm_layer=GroupNorm1)
 
 
 def load_centralized_cifar10(
@@ -84,7 +88,7 @@ def load_centralized_cifar10(
         load_experiment_from_yamls(
             files=[*CENTRALIZED_CONFIGS],
             overrides=convert_to_nested_dict({
-                "name": "cifar10,Centralized",
+                "name": "mnist,Centralized",
                 **CENTRALIZED_CONFIG_OVERRIDES,
                 **additional_overrides,
             }),
@@ -102,7 +106,7 @@ def load_cifar10_decentralized(
         load_experiment_from_yamls(
             files=[*DECENTRALIZED_BA_CONFIGS],
             overrides=convert_to_nested_dict({
-                "name": "cifar10,BA,DecAvg",
+                "name": "mnist,BA,DecAvg",
                 "graph.arguments.seed": simulation_args.seed,
                 **DECENTRALIZED_CONFIG_OVERRIDES,
                 **additional_overrides,
@@ -113,7 +117,7 @@ def load_cifar10_decentralized(
         load_experiment_from_yamls(
             files=[*DECENTRALIZED_ER_CONFIGS],
             overrides=convert_to_nested_dict({
-                "name": "cifar10,ER,DecAvg",
+                "name": "mnist,ER,DecAvg",
                 "graph.arguments.seed": simulation_args.seed,
                 **DECENTRALIZED_CONFIG_OVERRIDES,
                 **additional_overrides,
@@ -124,8 +128,8 @@ def load_cifar10_decentralized(
         load_experiment_from_yamls(
             files=[*FEDERATED_CONFIGS],
             overrides=convert_to_nested_dict({
-                "name": "cifar10,FedAvg",
-                **DECENTRALIZED_CONFIG_OVERRIDES,
+                "name": "mnist,FedAvg",
+                **FEDERATED_CONFIGS_OVERRIDES,
                 **additional_overrides,
             }),
             experiments_directory_root=str(simulation_args.output_directory.absolute()),
@@ -156,10 +160,16 @@ def _run_config(
 def main():
     parser = ArgumentParser()
     parser.add_argument(
-        "--concurrent-runs",
+        "--concurrent_runs",
         type=int,
         default=1,
         help="Number of configurations to run in parallel (default: 1)."
+    )
+    parser.add_argument(
+        "--num_parallel_clients",
+        type=int,
+        default=1,
+        help="Number of clients to run in parallel in each simulation (default: 1)."
     )
     parser.add_argument(
         "--experiment_name_filter",
@@ -184,8 +194,21 @@ def main():
     configurations = []
     try:
         configurations += [
-            *load_centralized_cifar10(simulation_args, additional_overrides=debug_arguments),
-            *load_cifar10_decentralized(simulation_args, additional_overrides=debug_arguments),
+            *load_centralized_cifar10(simulation_args, additional_overrides={
+                **debug_arguments,
+                **MNASNET_CNN,
+                "callbacks": [
+                    {"target": ConfusionMatrixDumpOnTestInferenceEnd}
+                ]
+            }),
+            *load_cifar10_decentralized(simulation_args, additional_overrides={
+                **debug_arguments,
+                **MNASNET_CNN,
+                "scenario.arguments.num_parallel_clients": extra_arguments.num_parallel_clients,
+                "callbacks": [
+                    {"target": ConfusionMatrixDumpOnCommRoundEndCallback}
+                ]
+            }),
         ]
     except ValidationError as e:
         print("\n❌ Failed to parse the configuration due to the following validation errors: ")
