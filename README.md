@@ -51,6 +51,7 @@ A fully working example is provided in `main.py`. The important steps:
        overrides=convert_to_nested_dict({
            "name": "cifar10,FedAvg",
            "client.target": DecAvgClient.__name__,
+           **MNASNET,
            # any other client/training_engine/etc. overrides
        }),
        experiments_directory_root=str(simulation_args.output_directory.absolute()),
@@ -72,3 +73,13 @@ Useful flags:
 - `--concurrent-runs N` — run up to `N` configurations in parallel via `multiprocessing.Pool`
 - `--experiment_name_filter REGEX` — only run experiments whose name matches the given regex (can be passed multiple times)
 - `--debug` — skip actual training/testing, useful for quickly checking that all configs load and wire together correctly
+
+
+## Experiments
+![Comparison of centralized and decentralized training runs](assets/experiments_comparison_plot.png)
+
+The plot above was produced with:
+
+```
+$ PYTHON_GIL=0 python main.py --seed 123 --concurrent_runs 5 --num_parallel_clients 50
+```
